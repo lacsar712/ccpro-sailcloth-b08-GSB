@@ -35,6 +35,7 @@ async function load() {
 async function create() {
   error.value = ''
   try {
+    const roll = rolls.value.find((r) => r.id === form.rollId)
     const payload = {
       rollId: form.rollId,
       startedAt: new Date(form.startedAt).toISOString(),
@@ -42,13 +43,20 @@ async function create() {
       cureHours: form.cureHours === '' || form.cureHours === null ? null : form.cureHours,
       notes: form.notes,
     }
+    // 与晾晒架面板同一乐观并发约定：携带当前看到的该卷笔数
+    if (roll && roll.dipCount !== undefined) payload.expectedDipCount = roll.dipCount
     await api.post('/dips/', payload)
     form.cureHours = ''
     form.notes = ''
     form.startedAt = localNow()
     await load()
   } catch (e) {
-    error.value = e.response?.data?.detail || JSON.stringify(e.response?.data) || '创建失败'
+    if (e.response?.status === 409) {
+      await load()
+      error.value = e.response.data?.detail || '他人已抢先登记该卷浸渍，请核对后再试'
+    } else {
+      error.value = e.response?.data?.detail || JSON.stringify(e.response?.data) || '创建失败'
+    }
   }
 }
 

@@ -1,7 +1,18 @@
+from decimal import Decimal
+
+from django.db.models import Sum
+from django.db.models.functions import Coalesce
 from rest_framework import serializers
 
 from .models import ClothRoll, DipRun, Loft
 from .rules import can_mark_roll_cured
+
+RESIN_ZERO = Decimal("0.00")
+
+
+def quantize_resin(value) -> Decimal:
+    """树脂合计统一保留两位小数（入库值本身即两位）。"""
+    return Decimal(value).quantize(RESIN_ZERO)
 
 
 class LoftSerializer(serializers.ModelSerializer):
@@ -23,6 +34,8 @@ class ClothRollSerializer(serializers.ModelSerializer):
     rollCode = serializers.CharField(source="roll_code")
     fabricWeightGsm = serializers.IntegerField(source="fabric_weight_gsm", required=False)
     loftName = serializers.CharField(source="loft.name", read_only=True)
+    resinTotal = serializers.SerializerMethodField()
+    dipCount = serializers.SerializerMethodField()
 
     class Meta:
         model = ClothRoll
@@ -33,11 +46,28 @@ class ClothRollSerializer(serializers.ModelSerializer):
             "rollCode",
             "status",
             "fabricWeightGsm",
+            "resinTotal",
+            "dipCount",
             "notes",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "loftName", "created_at", "updated_at")
+        read_only_fields = ("id", "loftName", "resinTotal", "dipCount", "created_at", "updated_at")
+
+    def get_resinTotal(self, obj):
+        # 与晾晒架角标、树脂累计专页同源：库内该卷各次树脂百分比的算术合计。
+        total = getattr(obj, "resin_total", None)
+        if total is None:
+            total = obj.dip_runs.aggregate(
+                s=Coalesce(Sum("resin_pct"), RESIN_ZERO)
+            )["s"]
+        return str(quantize_resin(total))
+
+    def get_dipCount(self, obj):
+        count = getattr(obj, "dip_count", None)
+        if count is None:
+            count = obj.dip_runs.count()
+        return count
 
     def validate(self, attrs):
         loft = attrs.get("loft") or getattr(self.instance, "loft", None)

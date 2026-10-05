@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../api'
+import { fmtResinTotal } from '../format'
 
 const lofts = ref([])
 const rolls = ref([])
@@ -103,6 +104,9 @@ async function logDip() {
           ? null
           : dipForm.cureHours,
       notes: dipForm.notes,
+      // 乐观并发：提交面板当前看到的该卷浸渍笔数；
+      // 他人抢先登记后服务器返回 409，避免同一卷交叉重复入库。
+      expectedDipCount: selected.value.dipCount,
     })
     if (selected.value.status === 'raw') {
       try {
@@ -116,10 +120,17 @@ async function logDip() {
     dipForm.startedAt = localNow()
     await load()
   } catch (e) {
-    panelError.value =
-      e.response?.data?.detail ||
-      JSON.stringify(e.response?.data) ||
-      '登记浸渍失败'
+    if (e.response?.status === 409) {
+      // 他人已抢先登记：拉取最新数据，角标/历史与库内对齐后再提示
+      await load()
+      panelError.value =
+        e.response.data?.detail || '他人已抢先登记该卷浸渍，请核对后再试'
+    } else {
+      panelError.value =
+        e.response?.data?.detail ||
+        JSON.stringify(e.response?.data) ||
+        '登记浸渍失败'
+    }
   } finally {
     panelBusy.value = false
   }
@@ -163,6 +174,10 @@ onMounted(load)
             @click="openRoll(roll)"
           >
             <span class="peg" aria-hidden="true" />
+            <span
+              class="resin-badge"
+              :title="`树脂累计 ${fmtResinTotal(roll.resinTotal)}（${roll.dipCount} 笔）`"
+            >Σ {{ fmtResinTotal(roll.resinTotal) }}</span>
             <span class="hang-tag" :class="'tag-' + roll.status">
               {{ statusLabel[roll.status] || roll.status }}
             </span>
@@ -209,6 +224,7 @@ onMounted(load)
           {{ statusLabel[selected.status] }}
         </span>
         <span class="hint">{{ selected.fabricWeightGsm }} gsm</span>
+        <span class="hint">树脂累计 {{ fmtResinTotal(selected.resinTotal) }}（{{ selected.dipCount }} 笔）</span>
       </div>
       <p v-if="selected.notes" class="hint">{{ selected.notes }}</p>
       <p v-if="panelError" class="error">{{ panelError }}</p>
@@ -265,8 +281,12 @@ onMounted(load)
             <span>{{ row.resinPct }}%</span>
             <span>{{ row.cureHours ?? '—' }} h</span>
           </li>
+          <li class="history-total">
+            <span>树脂合计</span>
+            <span>{{ fmtResinTotal(selected.resinTotal) }}</span>
+          </li>
         </ul>
-        <p v-else class="hint" style="margin:0">本卷尚无浸渍</p>
+        <p v-else class="hint" style="margin:0">本卷尚无浸渍，树脂合计 0</p>
       </div>
     </aside>
   </div>
