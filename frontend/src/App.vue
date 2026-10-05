@@ -19,22 +19,22 @@ function logout() {
     <router-view />
   </div>
   <div v-else class="layout">
-    <aside class="side">
+    <header class="topbar">
       <div class="brand">
         <span class="mark">帆</span>
         <strong>SailCloth</strong>
         <small>浸渍防水台</small>
       </div>
-      <nav>
+      <nav class="topnav" aria-label="主导航">
         <router-link to="/">晾晒架</router-link>
+        <router-link to="/resin">树脂累计</router-link>
       </nav>
-      <div class="nav-secondary">
-        <p class="nav-sec-label">台账（次要）</p>
+      <nav class="topnav secondary" aria-label="台账">
         <router-link to="/rolls">布卷台账</router-link>
         <router-link to="/dips">浸渍台账</router-link>
-      </div>
+      </nav>
       <button class="linkish" type="button" @click="logout">退出 {{ auth.user?.username }}</button>
-    </aside>
+    </header>
     <main class="content">
       <router-view />
     </main>

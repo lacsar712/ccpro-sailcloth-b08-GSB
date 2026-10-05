@@ -33,6 +33,20 @@
 
 规则实现：`backend/core/rules.py`
 
+树脂累计口径：每卷累计 = 库内该卷各次 `resinPct` 算术相加（`RESIN_TOTAL` 注解，见 `backend/core/views.py`）；晾晒架挂签角标与 `/resin` 专页合计共用此口径，无浸渍的卷显示算出的 0。
+
+浸渍登记幂等：同一卷同一 `startedAt` 只入库一笔（唯一约束 `uniq_dip_roll_started`）；两名浸胶工交叉提交同一浸渍事件时，后到的一笔命中已有记录并原样返回（HTTP 200），角标与专页合计只跟这一笔对齐。
+
+## SPA 信息架构
+
+- **登录** → 进入主工作面
+- **完整顶栏**：`/` 晾晒架 · `/resin` 树脂累计 · 台账（`/rolls`、`/dips`）· 退出
+- **`/` 帆布间晾晒架（主）**：按帆布间挂布卷芯片（挂签状态 `raw` / `dipping` / `cured`，角标显示该卷树脂累计）；点击打开右侧面板登记 `DipRun`、切换固化状态；架下为浸渍流水次要信息流
+- **`/resin` 树脂累计专页**：列出每卷历史浸渍的树脂百分比并给出算术合计，可按帆布间与布卷筛选；合计与挂签角标同口径
+- **`/rolls` · `/dips`（次要台账）**：保留列表/表单 CRUD
+
+API：JWT、`/api/lofts|rolls|dips|dashboard|resin/`。
+
 ## 快速启动
 
 ```bash
@@ -41,14 +55,6 @@ docker compose up --build
 ```
 
 浏览器打开 http://localhost:3740
-
-## SPA 信息架构
-
-- **登录** → 进入主工作面
-- **`/` 帆布间晾晒架（主）**：按帆布间挂布卷芯片（挂签状态 `raw` / `dipping` / `cured`）；点击打开右侧面板登记 `DipRun`、切换固化状态；架下为浸渍流水次要信息流
-- **`/rolls` · `/dips`（次要台账）**：保留列表/表单 CRUD，侧栏降级为「台账」入口，非主路径
-
-API 契约不变（JWT、`/api/lofts|rolls|dips|dashboard/`）。
 
 ## 配色
 

@@ -55,6 +55,14 @@ class DipRun(models.Model):
 
     class Meta:
         ordering = ["-started_at"]
+        constraints = [
+            # 同一卷同一开始时间只许一笔入库：两名浸胶工交叉登记同一浸渍事件时，
+            # 数据库层面挡住重复，第二笔走幂等返回（见 DipRunViewSet.create）。
+            models.UniqueConstraint(
+                fields=["roll", "started_at"],
+                name="uniq_dip_roll_started",
+            )
+        ]
 
     def __str__(self):
         return f"Dip@{self.roll_id} {self.started_at}"

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../api'
+import { fmtResin } from '../utils/format'
 
 const lofts = ref([])
 const rolls = ref([])
@@ -163,6 +164,9 @@ onMounted(load)
             @click="openRoll(roll)"
           >
             <span class="peg" aria-hidden="true" />
+            <span class="resin-corner" title="树脂累计（库内各次相加）">
+              累计 {{ fmtResin(roll.resinTotal) }}%
+            </span>
             <span class="hang-tag" :class="'tag-' + roll.status">
               {{ statusLabel[roll.status] || roll.status }}
             </span>
@@ -209,6 +213,7 @@ onMounted(load)
           {{ statusLabel[selected.status] }}
         </span>
         <span class="hint">{{ selected.fabricWeightGsm }} gsm</span>
+        <span class="hint">树脂累计 {{ fmtResin(selected.resinTotal) }}%</span>
       </div>
       <p v-if="selected.notes" class="hint">{{ selected.notes }}</p>
       <p v-if="panelError" class="error">{{ panelError }}</p>
